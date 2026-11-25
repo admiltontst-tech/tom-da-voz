@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tom da Voz</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* VOICE: ferramenta de palco — clara, grande, legível de longe e no escuro
+   IDEA: um afinador de pedal de guitarra cruzado com o quadro de cifra do ministério
+   PICTURE: a nota gigante com o ponteiro de afinação e o rastro da voz
+   COLOUR and TYPE: fundo grafite, verde-afinado, âmbar-desafinado, Archivo 900
+   LAYOUT: coluna única no celular; nota em cima, tom do louvor abaixo, ajustes no fim */
+:root{--bg:#0d1016;--panel:#161b24;--line:#252c38;--ink:#eef2f7;--mute:#8b96a8;--ok:#2fd67b;--warn:#ffb020;--bad:#ff5a4e;--acc:#5aa9ff}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Archivo,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+main{max-width:560px;margin:0 auto;padding:14px 14px 40px;display:grid;gap:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:22px;margin:0;font-weight:900;letter-spacing:-.01em}
+h2{font-size:14px;margin:0 0 6px;color:var(--mute);font-weight:500}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px}
+button,select,input{font:inherit;color:inherit}
+.btn{min-height:44px;padding:0 18px;border-radius:12px;border:1px solid var(--line);background:#1f2632;font-weight:700;cursor:pointer}
+.btn:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.mic{background:var(--ok);color:#06230f;border:0;display:flex;align-items:center;gap:8px}
+.mic.on{background:var(--bad);color:#fff}
+.dot{width:10px;height:10px;border-radius:50%;background:currentColor}
+.mic.on .dot{animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.mic.on .dot{animation:none}#needle{transition:none!important}}
+
+/* Nota ao vivo */
+#live{text-align:center;padding:18px 16px 14px}
+#note{font-size:clamp(110px,34vw,170px);font-weight:900;line-height:.95;letter-spacing:-.04em;color:var(--ink);transition:color .15s}
+#note sup{font-size:.42em;vertical-align:.95em;margin-left:.02em}
+#note.idle{color:#323b4a}
+#solf{font-size:22px;font-weight:700;min-height:33px}
+#meta{color:var(--mute);font-size:14px;min-height:21px}
+.meter{position:relative;height:46px;margin:14px 4px 4px}
+.scale{position:absolute;inset:18px 0 auto;height:10px;border-radius:6px;background:linear-gradient(90deg,var(--bad),var(--warn) 30%,var(--ok) 44%,var(--ok) 56%,var(--warn) 70%,var(--bad))}
+.tick{position:absolute;top:12px;width:2px;height:22px;background:var(--ink);left:50%;margin-left:-1px;opacity:.7}
+#needle{position:absolute;top:4px;left:50%;width:6px;height:38px;margin-left:-3px;border-radius:3px;background:#fff;box-shadow:0 0 0 2px var(--bg);transition:left .08s linear;opacity:0}
+.ends{display:flex;justify-content:space-between;color:var(--mute);font-size:13px}
+#tip{font-weight:700;min-height:24px;margin-top:4px}
+.fig{position:relative;height:120px;margin-top:10px;border-radius:12px;background:#10141b;overflow:hidden}
+.fig canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* Tom */
+.keyrow{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+#key{font-size:64px;font-weight:900;line-height:1;letter-spacing:-.03em}
+#keypt{font-size:18px;font-weight:700}
+#keysub{color:var(--mute);font-size:14px}
+.conf{height:8px;border-radius:5px;background:#232a36;margin:12px 0 6px;overflow:hidden}
+.conf i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+.alts{display:flex;gap:6px;flex-wrap:wrap;font-size:14px;color:var(--mute)}
+.alts b{color:var(--ink);font-weight:700}
+.bars{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;align-items:end;height:74px;margin-top:14px}
+.bars div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:3px}
+.bars span{display:block;width:100%;border-radius:4px 4px 2px 2px;background:#2b3442;min-height:3px;transition:height .25s}
+.bars span.in{background:var(--acc)}
+.bars small{font-size:11px;color:var(--mute);white-space:nowrap}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select{min-height:44px;border-radius:12px;border:1px solid var(--line);background:#1f2632;padding:0 12px;font-size:16px}
+#verdict{margin-top:12px;padding:14px;border-radius:14px;font-size:22px;font-weight:900;text-align:center;background:#1f2632;color:var(--mute)}
+#verdict.ok{background:rgba(47,214,123,.15);color:var(--ok)}
+#verdict.off{background:rgba(255,90,78,.15);color:#ff8a80}
+#verdict small{display:block;font-size:14px;font-weight:500;color:var(--mute);margin-top:2px}
+
+details summary{cursor:pointer;font-weight:700;min-height:28px}
+.set{display:grid;gap:14px;margin-top:12px}
+.set label{display:grid;gap:6px;font-size:14px;color:var(--mute)}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{flex:1;min-height:44px;border:0;background:transparent;font-weight:700;color:var(--mute);cursor:pointer}
+.seg button[aria-pressed=true]{background:#2a3342;color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--acc);min-height:32px}
+#err{display:none;background:rgba(255,90,78,.15);color:#ffb4ad;border-radius:14px;padding:14px}
+.foot{color:var(--mute);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tom da Voz</h1>
+    <button class="btn mic" id="mic" aria-pressed="false"><span class="dot"></span><span id="micTxt">Começar a ouvir</span></button>
+  </header>
+
+  <div id="err" role="alert"></div>
+
+  <section class="card" id="live" aria-live="polite">
+    <div id="note" class="idle">–</div>
+    <div id="solf">Toque em “Começar a ouvir”</div>
+    <div id="meta">&nbsp;</div>
+    <div class="meter" aria-hidden="true">
+      <div class="scale"></div><div class="tick"></div><div id="needle"></div>
+    </div>
+    <div class="ends"><span>♭ baixo</span><span>afinado</span><span>alto ♯</span></div>
+    <div id="tip">&nbsp;</div>
+    <div class="fig"><canvas id="trail"></canvas></div>
+  </section>
+
+  <section class="card">
+    <h2>Tom em que a pessoa está cantando</h2>
+    <div class="keyrow">
+      <div id="key">–</div>
+      <div><div id="keypt">Ouvindo…</div><div id="keysub">Precisa de uns 8 segundos de canto</div></div>
+    </div>
+    <div class="conf"><i id="confBar"></i></div>
+    <div class="alts" id="alts"></div>
+    <div class="bars" id="bars"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="reset">Zerar e ouvir de novo</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Tom do louvor (o tom combinado)</h2>
+    <div class="row">
+      <select id="target" aria-label="Tom do louvor"></select>
+    </div>
+    <div id="verdict">Escolha o tom do louvor para comparar</div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Ajustes</summary>
+      <div class="set">
+        <label>Nomes das notas
+          <div class="seg" data-k="naming"><button data-v="cifra">Cifra (C D E)</button><button data-v="solf">Dó Ré Mi</button></div>
+        </label>
+        <label>Acidentes
+          <div class="seg" data-k="flats"><button data-v="0">Sustenido (♯)</button><button data-v="1">Bemol (♭)</button></div>
+        </label>
+        <label>Tons menores
+          <div class="seg" data-k="minor"><button data-v="1">Considerar</button><button data-v="0">Só maiores</button></div>
+        </label>
+        <label>Sensibilidade do microfone: <span id="sensV"></span>
+          <input type="range" id="sens" min="1" max="10" step="1">
+        </label>
+        <label>Memória do tom (quanto tempo ele lembra): <span id="memV"></span>
+          <input type="range" id="mem" min="10" max="120" step="5">
+        </label>
+        <label>Referência do Lá: <span id="a4V"></span> Hz
+          <input type="range" id="a4" min="430" max="450" step="1">
+        </label>
+      </div>
+    </details>
+  </section>
+
+  <p class="foot">Dica: deixe o celular perto de quem canta e longe da caixa de som e da bateria.</p>
+</main>
+
+<script src="core.js"></script>
+<script>
+{
+const T = window.TomCore;
+const $ = id => document.getElementById(id);
+const S = Object.assign({naming:'cifra',flats:'0',minor:'1',sens:6,mem:40,a4:440,target:''},
+  (()=>{try{return JSON.parse(localStorage.getItem('tomdavoz')||'{}')}catch(e){return{}}})());
+const save = () => { try{localStorage.setItem('tomdavoz',JSON.stringify(S))}catch(e){} };
+
+let ctx=null, analyser=null, stream=null, buf=null, raf=0, wake=null, running=false;
+let hist=new Array(12).fill(0), heard=0, lastT=0, lastAnalysis=0;
+const recent=[]; const trail=[];
+const ROW = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+/* ---------- Ajustes ---------- */
+document.querySelectorAll('.seg').forEach(seg=>{
+  const k=seg.dataset.k;
+  const paint=()=>seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S[k])));
+  seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S[k]=b.dataset.v;save();paint();buildTarget();renderKey();drawBars();});
+  paint();
+});
+[['sens',v=>v+'/10'],['mem',v=>v+' s'],['a4',v=>v]].forEach(([id,f])=>{
+  const el=$(id); el.value=S[id]; $(id+'V').textContent=f(S[id]);
+  el.addEventListener('input',()=>{S[id]=+el.value;$(id+'V').textContent=f(S[id]);save();});
+});
+
+function nm(p){ return S.naming==='solf' ? (S.flats==='1'?T.SOLF_B:T.SOLF_S)[p] : (S.flats==='1'?T.FLAT:T.SHARP)[p]; }
+
+function buildTarget(){
+  const sel=$('target'); const cur=S.target;
+  let h='<option value="">— escolher —</option><optgroup label="Maiores">';
+  for(let i=0;i<12;i++){const k=T.keyName(i,false);h+=`<option value="${i}M">${k.chord} · ${k.pt}</option>`;}
+  h+='</optgroup><optgroup label="Menores">';
+  for(let i=0;i<12;i++){const k=T.keyName(i,true);h+=`<option value="${i}m">${k.chord} · ${k.pt}</option>`;}
+  sel.innerHTML=h+'</optgroup>'; sel.value=cur;
+}
+$('target').addEventListener('change',e=>{S.target=e.target.value;save();renderKey();});
+buildTarget();
+
+/* ---------- Microfone ---------- */
+async function start(){
+  $('err').style.display='none';
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  }catch(e){
+    const msg = !window.isSecureContext ? 'O microfone só funciona em endereço https (ex.: publicado na Vercel).' :
+      (e.name==='NotAllowedError' ? 'Permissão do microfone negada. Libere o microfone para este site nas configurações do navegador.' : 'Não foi possível abrir o microfone: '+e.message);
+    $('err').textContent=msg; $('err').style.display='block'; return;
+  }
+  ctx=new (window.AudioContext||window.webkitAudioContext)();
+  if(ctx.state==='suspended') await ctx.resume();
+  const src=ctx.createMediaStreamSource(stream);
+  analyser=ctx.createAnalyser(); analyser.fftSize=2048; src.connect(analyser);
+  buf=new Float32Array(analyser.fftSize);
+  running=true; lastT=performance.now();
+  $('mic').classList.add('on'); $('mic').setAttribute('aria-pressed','true'); $('micTxt').textContent='Parar';
+  $('solf').textContent='Cante uma nota…';
+  try{ wake=await navigator.wakeLock?.request('screen'); }catch(e){}
+  raf=requestAnimationFrame(loop);
+}
+function stop(){
+  running=false; cancelAnimationFrame(raf);
+  stream?.getTracks().forEach(t=>t.stop()); ctx?.close(); ctx=null;
+  try{wake?.release()}catch(e){} wake=null;
+  $('mic').classList.remove('on'); $('mic').setAttribute('aria-pressed','false'); $('micTxt').textContent='Começar a ouvir';
+  showSilence('Pausado');
+}
+$('mic').addEventListener('click',()=>running?stop():start());
+document.addEventListener('visibilitychange',async()=>{ if(running&&document.visibilityState==='visible'){ try{wake=await navigator.wakeLock?.request('screen')}catch(e){} } });
+
+/* ---------- Loop de análise ---------- */
+function loop(now){
+  raf=requestAnimationFrame(loop);
+  if(now-lastAnalysis<40) return;            // ~25 análises por segundo
+  const dt=Math.min(.2,(now-lastT)/1000); lastT=now; lastAnalysis=now;
+  analyser.getFloatTimeDomainData(buf);
+  // esquecimento gradual (memória do tom)
+  const decay=Math.pow(.5, dt/(S.mem/2));
+  for(let i=0;i<12;i++) hist[i]*=decay;
+
+  const level=T.rms(buf);
+  const gate=0.06/Math.pow(1.6,S.sens);      // sensibilidade 1..10
+  let r = level>gate ? T.detectPitch(buf,ctx.sampleRate) : null;
+  if(r && (r.clarity<0.8 || r.freq<65 || r.freq>1100)) r=null;
+
+  if(r){
+    const m=T.freqToMidi(r.freq,S.a4);
+    recent.push(m); if(recent.length>5) recent.shift();
+    const med=[...recent].sort((a,b)=>a-b)[recent.length>>1];
+    // só conta para o tom quando a nota está estável
+    if(recent.length>=3 && Math.abs(m-med)<0.5){ hist[T.pc(med)]+=dt; heard+=dt; }
+    trail.push({t:now,m:med});
+    showNote(med);
+  } else {
+    if(recent.length) recent.shift();
+    trail.push({t:now,m:null});
+    if(!recent.length) showSilence('Cante uma nota…');
+  }
+  while(trail.length && now-trail[0].t>6000) trail.shift();
+  drawTrail(now);
+  keyTick+=dt; if(keyTick>.5){keyTick=0;renderKey();drawBars();}
+}
+let keyTick=0;
+
+function showNote(m){
+  const n=T.noteInfo(m,S.flats==='1',S.a4);
+  const name=nm(n.pc);
+  const big = S.naming==='solf' ? name : name.replace(/([#b])$/, s=>`<sup>${s==='#'?'♯':'♭'}</sup>`);
+  const el=$('note'); el.classList.remove('idle'); el.innerHTML=big;
+  $('solf').textContent = S.naming==='solf' ? (S.flats==='1'?T.FLAT:T.SHARP)[n.pc]+' · oitava '+n.octave : (S.flats==='1'?T.SOLF_B:T.SOLF_S)[n.pc]+' · oitava '+n.octave;
+  const f=S.a4*Math.pow(2,(m-69)/12);
+  $('meta').textContent=`${f.toFixed(1)} Hz · ${n.cents>0?'+':''}${n.cents} cents`;
+  const nd=$('needle'); nd.style.opacity=1; nd.style.left=(50+n.cents)+'%';
+  const a=Math.abs(n.cents);
+  const col = a<=10?'var(--ok)':a<=25?'var(--warn)':'var(--bad)';
+  el.style.color=col;
+  $('tip').textContent = a<=10?'Afinado':(n.cents<0?'Um pouco baixo — subir':'Um pouco alto — descer');
+  $('tip').style.color=col;
+}
+function showSilence(t){
+  const el=$('note'); el.classList.add('idle'); el.style.color=''; el.textContent='–';
+  $('solf').textContent=t; $('meta').innerHTML='&nbsp;'; $('tip').innerHTML='&nbsp;';
+  $('needle').style.opacity=0;
+}
+
+/* ---------- Rastro da voz ---------- */
+const cv=$('trail'), g=cv.getContext('2d');
+function drawTrail(now){
+  const W=cv.clientWidth,H=cv.clientHeight,dpr=devicePixelRatio||1;
+  if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
+  g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  const ms=trail.filter(p=>p.m!=null).map(p=>p.m);
+  const c = ms.length ? ms.reduce((a,b)=>a+b,0)/ms.length : 60;
+  const lo=Math.round(c)-6, hi=Math.round(c)+6;
+  const y=m=>H-((m-lo)/(hi-lo))*H;
+  g.font='11px Archivo,sans-serif'; g.textBaseline='middle';
+  for(let k=lo;k<=hi;k++){
+    const p=((k%12)+12)%12, nat=![1,3,6,8,10].includes(p);
+    g.strokeStyle=nat?'#232b37':'#181e27'; g.beginPath(); g.moveTo(26,y(k)); g.lineTo(W,y(k)); g.stroke();
+    if(nat && W>260){ g.fillStyle='#5d6878'; g.fillText(nm(p),4,y(k)); }
+  }
+  g.strokeStyle='#5aa9ff'; g.lineWidth=3; g.lineJoin='round'; g.lineCap='round';
+  g.beginPath(); let pen=false;
+  for(const p of trail){
+    const x=26+(W-26)*(1-(now-p.t)/6000);
+    if(p.m==null){pen=false;continue;}
+    pen?g.lineTo(x,y(p.m)):g.moveTo(x,y(p.m)); pen=true;
+  }
+  g.stroke();
+}
+
+/* ---------- Tom estimado ---------- */
+let lastKey=null;
+function renderKey(){
+  const total=hist.reduce((a,b)=>a+b,0);
+  if(heard<8 || total<3){
+    $('key').textContent='–'; $('keypt').textContent=running?'Ouvindo…':'Aguardando';
+    $('keysub').textContent=`Precisa de uns 8 segundos de canto (${Math.min(8,heard).toFixed(0)}/8)`;
+    $('confBar').style.width=(Math.min(1,heard/8)*100)+'%'; $('alts').innerHTML='';
+    lastKey=null; renderVerdict(); return;
+  }
+  const ks=T.estimateKey(hist,S.minor==='1');
+  const best=ks[0];
+  // segundo candidato que não seja o relativo
+  const rel = k => (k.minor? (k.tonic+3)%12 : k.tonic);
+  const second=ks.find(k=>rel(k)!==rel(best))||ks[1];
+  const conf=Math.max(0,Math.min(1,(best.score-second.score)/0.25));
+  lastKey=best;
+  $('key').textContent=best.chord; $('keypt').textContent=best.pt;
+  $('keysub').textContent=conf>.6?'Bem definido':conf>.3?'Provável — continue cantando':'Ainda incerto — cante mais trechos';
+  $('confBar').style.width=(conf*100)+'%';
+  $('alts').innerHTML='Outras possibilidades: '+ks.filter(k=>k!==best).slice(0,3).map(k=>`<b>${k.chord}</b>`).join(' · ');
+  renderVerdict();
+}
+function renderVerdict(){
+  const v=$('verdict');
+  if(!S.target){v.className='';v.textContent='Escolha o tom do louvor para comparar';return;}
+  const t={tonic:parseInt(S.target),minor:S.target.endsWith('m')};
+  if(!lastKey){v.className='';v.innerHTML='Aguardando a voz…';return;}
+  const d=T.keyDiff(lastKey,t);
+  const tn=T.keyName(t.tonic,t.minor).chord;
+  v.className=d===0?'ok':'off';
+  v.innerHTML= d===0 ? `✓ No tom certo (${tn})` :
+    `${T.describeDiff(d)}<small>Combinado: ${tn} · cantando em ${lastKey.chord} (${d>0?'+':''}${d} ${Math.abs(d)>1?'semitons':'semitom'})</small>`;
+}
+function drawBars(){
+  const max=Math.max(...hist,0.001);
+  const scaleSet = lastKey ? new Set((lastKey.minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11]).map(i=>(i+lastKey.tonic)%12)) : new Set();
+  $('bars').innerHTML=hist.map((v,i)=>`<div><span class="${scaleSet.has(i)?'in':''}" style="height:${Math.round(v/max*56)}px"></span><small>${nm(i).replace('#','♯').replace(/b$/,'♭')}</small></div>`).join('');
+}
+$('reset').addEventListener('click',()=>{hist.fill(0);heard=0;lastKey=null;renderKey();drawBars();});
+
+renderKey(); drawBars(); drawTrail(performance.now());
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
